@@ -24,6 +24,7 @@ const TrackService = lazy(() => import('./pages/customer/TrackService'));
 const Reviews = lazy(() => import('./pages/customer/Reviews'));
 const Profile = lazy(() => import('./pages/customer/Profile'));
 const Customization = lazy(() => import('./pages/customer/Customization'));
+const ThreeCustomBuilder = lazy(() => import('./pages/customer/ThreeCustomBuilder'));
 
 const AdminDashboard = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminBookings = lazy(() => import('./pages/admin/AdminBookings'));
@@ -76,6 +77,7 @@ function App() {
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/customization" element={<Customization />} />
+    <Route path="/customization/3d" element={<ThreeCustomBuilder />} />
           </Route>
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboard />} />

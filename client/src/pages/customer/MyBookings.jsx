@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  CalendarClock, Check, ChevronRight, CreditCard, Package, Receipt, Truck, Wrench
+  CalendarClock, Check, ChevronRight, CreditCard, Package, Receipt, Truck, Wrench, Palette
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn, formatCurrency } from '../../utils/helpers';
@@ -114,7 +114,7 @@ function PaymentModal({ booking, onClose }) {
 }
 
 export default function MyBookings() {
-  const { user, users, getCustomerBikes, getCustomerBookings, getBikeById, getBookingPayments } = useStore();
+  const { user, users, getCustomerBikes, getCustomerBookings, getBikeById, getBookingPayments, getCustomizationByBooking } = useStore();
   const loading = usePageLoading();
   const [error, setError] = useState(false);
   const [filter, setFilter] = useState('all');
@@ -139,6 +139,7 @@ export default function MyBookings() {
 
   const bookingPayments = details ? getBookingPayments(details.id) : [];
   const detailsBike = details ? getBikeById(details.bikeId) : null;
+  const design = details ? getCustomizationByBooking(details.id) : null;
   const stageIdx = details ? statusToStageIndex(details.status) : 0;
 
   const paidForBooking = b => getBookingPayments(b.id).reduce((s, p) => s + (p.amount || 0), 0);
@@ -279,6 +280,36 @@ export default function MyBookings() {
                 <p className="mt-3 text-xs text-dark-400 italic bg-surface-light/60 border border-border rounded-xl p-3">"{details.notes}"</p>
               )}
             </div>
+
+            {design && (
+                <div>
+                  <SectionTitle icon={Palette} title="Customization Preview" />
+                  <div className="mb-3 rounded-xl border border-border overflow-hidden">
+                    {design.previewImage
+                      ? <img src={design.previewImage} alt="Your customization preview" className="w-full" />
+                      : <div className="py-8 text-center text-xs text-dark-400">Preview not available</div>}
+                  </div>
+                  {(design.parts?.length > 0 || design.stickers?.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {design.parts?.map((p, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg bg-surface-lighter text-dark-300 border border-border">
+                          <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: p.color }} />
+                          Painted part
+                        </span>
+                      ))}
+                      {design.stickers?.map((s, i) => (
+                        <span key={i} className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg bg-primary-500/10 text-primary-400 border border-primary-500/20">
+                          <Palette className="w-3 h-3" /> Sticker
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-dark-400">
+                    {design.finishType && <span className="text-dark-200 font-medium">{design.finishType} finish</span>} · design estimate {formatCurrency(design.total || 0)}
+                  </p>
+                  {design.notes && <p className="mt-2 text-xs text-dark-400 italic">"{design.notes}"</p>}
+                </div>
+              )}
 
             <div>
               <SectionTitle icon={Receipt} title="Price Breakdown" />

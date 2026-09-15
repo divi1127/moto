@@ -5,9 +5,11 @@ import {
   Paintbrush, Sticker, Sparkles, ShieldCheck, Droplets, Bike, Wrench,
   ArrowRight, ChevronLeft, ChevronRight, Star, CheckCircle2, Phone,
   Clock, MapPin, Award, Zap, Heart, Users, MessageSquare, Quote,
-  Camera, PlayCircle, Send, ChevronDown,
+  Camera, PlayCircle, Send, ChevronDown, CalendarCheck,
 } from 'lucide-react';
 import Navbar from '../components/landing/Navbar';
+import HeroScene3D from '../components/landing/HeroScene3D';
+import BikeCustomizerUI from '../components/landing/BikeCustomizerUI';
 import BeforeAfterSlider from '../components/ui/BeforeAfterSlider';
 import Button from '../components/ui/Button';
 
@@ -104,113 +106,142 @@ const galleryItems = [
 
 export default function Landing() {
   const navigate = useNavigate();
+  const [scrollPhase, setScrollPhase] = useState('hero');
+  const [selectedColor, setSelectedColor] = useState('#cc0000');
+  const [activeStickers, setActiveStickers] = useState([]);
+  const scene3DRef = useRef(null);
+
+  // Propagate color change into Three.js scene
+  function handleColorChange(hex) {
+    setSelectedColor(hex);
+    scene3DRef.current?.setBikeColor(hex);
+  }
+
+  // Propagate sticker change into Three.js scene
+  function handleStickersChange(indices) {
+    setActiveStickers(indices);
+    scene3DRef.current?.showStickers(indices);
+  }
 
   return (
     <div className="min-h-screen bg-dark-950 text-white overflow-x-hidden">
       <Navbar />
 
-      {/* ─── HERO ─── */}
-      <section className="relative min-h-screen flex items-center justify-center pt-24 pb-16 px-6 overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-dark-950 via-dark-950/95 to-dark-950" />
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary-500/8 rounded-full blur-[120px]" />
-          <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] bg-red-500/5 rounded-full blur-[100px]" />
-          <div className="absolute top-1/3 right-1/4 w-[400px] h-[400px] bg-orange-500/5 rounded-full blur-[80px]" />
-        </div>
+      {/* ─────────────────────────────────────────────────────────────
+          CINEMATIC 3D HERO — scroll-pinned 500vh tall container
+          The inner sticky div stays at 100vh while the outer div
+          creates the scroll distance for GSAP ScrollTrigger
+      ───────────────────────────────────────────────────────────── */}
+      <section id="cinematic-hero" style={{ height: '500vh', position: 'relative' }}>
+        <div style={{ position: 'sticky', top: 0, height: '100vh', overflow: 'hidden' }}>
+          {/* Three.js canvas fills the entire viewport */}
+          <HeroScene3D
+            ref={scene3DRef}
+            onPhaseChange={setScrollPhase}
+            selectedColor={selectedColor}
+            activeStickers={activeStickers}
+          />
 
-        {/* Motorcycle silhouette */}
-        <div className="absolute inset-0 z-0 flex items-center justify-center opacity-[0.03]">
-          <svg viewBox="0 0 1200 600" className="w-[1000px] h-auto" fill="currentColor">
-            <path d="M200 450 Q220 350 280 320 Q320 300 360 310 L400 300 Q440 280 480 280 L520 300 Q540 310 560 340 L600 380 Q620 400 660 420 L700 430 Q740 435 780 420 L820 400 Q860 380 880 350 Q900 320 920 300 Q940 280 960 270 L1000 260 Q1020 255 1040 260 Q1060 265 1060 280 L1050 320 Q1040 360 1020 380 Q1000 400 960 420 Q940 430 920 435 L880 440 Q860 445 840 450 Q820 455 800 455 L760 450 Q740 448 720 445 Q700 442 680 440 L640 445 Q620 450 600 458 Q580 465 540 470 Q500 474 460 470 Q420 466 400 455 L360 440 Q340 435 320 440 Q280 450 240 458 Q220 462 200 458Z" />
-            <circle cx="300" cy="460" r="55" fill="none" stroke="currentColor" strokeWidth="8" />
-            <circle cx="900" cy="460" r="55" fill="none" stroke="currentColor" strokeWidth="8" />
-          </svg>
-        </div>
+          {/* Overlay UI — phase labels, color picker, sticker picker */}
+          <div className="absolute inset-0 z-10 pointer-events-none">
+            <BikeCustomizerUI
+              phase={scrollPhase}
+              selectedColor={selectedColor}
+              activeStickers={activeStickers}
+              onColorChange={handleColorChange}
+              onStickersChange={handleStickersChange}
+            />
+          </div>
 
-        <div className="relative z-10 max-w-5xl mx-auto text-center">
+          {/* Pointer-events enabler for the customizer panels */}
+          <style>{`
+            .customizer-panel { pointer-events: all; }
+          `}</style>
+
+          {/* ── Booking CTA overlay (preview phase) ── */}
+          <AnimatePresence>
+            {scrollPhase === 'preview' && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.45 }}
+                className="absolute bottom-28 left-1/2 -translate-x-1/2 z-30 pointer-events-auto"
+              >
+                <Button size="lg" onClick={() => navigate('/register')} className="shadow-2xl shadow-amber-500/30">
+                  <CalendarCheck className="w-5 h-5" />
+                  Book This Customization
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Fade vignette — bottom edge blends into next section */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-48 z-10 pointer-events-none"
+            style={{ background: 'linear-gradient(to bottom, transparent, #0f1115)' }}
+          />
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────────
+          TRANSITION BRIDGE — stats + scroll invitation
+      ───────────────────────────────────────────────────────────── */}
+      <section className="py-20 px-6 bg-dark-950 relative z-10">
+        <div className="max-w-5xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-500/10 border border-primary-500/20 mb-8"
-          >
-            <span className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-            <span className="text-xs font-semibold text-primary-400 uppercase tracking-wider">Bangalore's #1 Bike Studio</span>
-          </motion.div>
-
-          <motion.h1
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-            className="text-5xl sm:text-6xl lg:text-7xl font-black leading-[1.05] tracking-tight mb-6"
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7 }}
+            className="text-center mb-14"
           >
-            Customize Your Ride.
-            <br />
-            <span className="bg-gradient-to-r from-primary-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
-              Protect Its Finish.
-            </span>
-          </motion.h1>
-
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6, duration: 0.6 }}
-            className="text-lg sm:text-xl text-dark-300 max-w-2xl mx-auto mb-10 leading-relaxed"
-          >
-            Premium custom paint, ceramic coating, PPF, detailing, and accessories — all under one roof. Your bike deserves the best.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8, duration: 0.6 }}
-            className="flex flex-col sm:flex-row items-center justify-center gap-4"
-          >
-            <Button size="xl" onClick={() => navigate('/register')}>
-              Book a Service <ArrowRight className="w-5 h-5" />
-            </Button>
-            <Button size="xl" variant="outline" onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}>
-              Explore Services
-            </Button>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">
+              Bangalore's Premier Studio
+            </p>
+            <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-4">
+              Where Bikes Become{' '}
+              <span className="bg-gradient-to-r from-amber-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+                Legends
+              </span>
+            </h2>
+            <p className="text-dark-400 max-w-xl mx-auto leading-relaxed">
+              You just customized your dream bike above. Now let us bring it to life.
+              Book a service with Bangalore's most trusted motorcycle studio.
+            </p>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.2, duration: 0.8 }}
-            className="flex items-center justify-center gap-8 mt-16"
-          >
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-6 max-w-2xl mx-auto">
             {[
-              { val: '2,500+', label: 'Bikes Serviced' },
-              { val: '4.9/5', label: 'Google Rating' },
-              { val: '5+', label: 'Years Experience' },
-            ].map((s) => (
-              <div key={s.label} className="text-center">
-                <p className="text-xl sm:text-2xl font-bold text-white">{s.val}</p>
-                <p className="text-[11px] text-dark-500 uppercase tracking-wider mt-0.5">{s.label}</p>
-              </div>
+              { val: '2,500+', label: 'Bikes Transformed' },
+              { val: '4.9★', label: 'Google Rating' },
+              { val: '5+ Yrs', label: 'Studio Experience' },
+            ].map((s, i) => (
+              <motion.div
+                key={s.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className="text-center p-6 rounded-2xl border border-border bg-surface/40 backdrop-blur-sm"
+              >
+                <p className="text-3xl sm:text-4xl font-black bg-gradient-to-r from-amber-400 to-orange-500 bg-clip-text text-transparent">
+                  {s.val}
+                </p>
+                <p className="text-xs text-dark-500 uppercase tracking-wider mt-2">{s.label}</p>
+              </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        >
-          <a href="#services" className="flex flex-col items-center gap-2 text-dark-500 hover:text-white transition-colors">
-            <span className="text-[10px] uppercase tracking-widest font-medium">Scroll</span>
-            <ChevronDown className="w-4 h-4 animate-bounce" />
-          </a>
-        </motion.div>
       </section>
 
       {/* ─── SERVICES ─── */}
-      <AnimatedSection id="services" className="py-24 px-6">
+      <AnimatedSection id="services" className="py-24 px-6 bg-dark-900/40">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">What We Do</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">What We Do</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">Premium Services</h2>
             <p className="text-dark-400 mt-4 max-w-lg mx-auto">From paint jobs to paint protection, we handle every aspect of motorcycle customization and care.</p>
           </motion.div>
@@ -220,7 +251,7 @@ export default function Landing() {
                 key={s.title}
                 variants={fadeUp}
                 custom={i}
-                className="group relative p-8 rounded-3xl border border-border bg-surface/50 backdrop-blur-sm hover:border-primary-500/30 hover:bg-surface transition-all duration-300 cursor-pointer"
+                className="group relative p-8 rounded-3xl border border-border bg-surface/50 backdrop-blur-sm hover:border-amber-500/30 hover:bg-surface transition-all duration-300 cursor-pointer"
               >
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${s.color} flex items-center justify-center mb-4`}>
                   <s.icon className={`w-6 h-6 ${s.accent}`} />
@@ -228,7 +259,7 @@ export default function Landing() {
                 <h3 className="text-lg font-bold text-white mb-2">{s.title}</h3>
                 <p className="text-sm text-dark-400 leading-relaxed">{s.desc}</p>
                 <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ArrowRight className="w-4 h-4 text-primary-400" />
+                  <ArrowRight className="w-4 h-4 text-amber-400" />
                 </div>
               </motion.div>
             ))}
@@ -237,10 +268,10 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── BEFORE / AFTER ─── */}
-      <AnimatedSection id="before-after" className="py-24 px-6 bg-dark-900/50">
+      <AnimatedSection id="before-after" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">Our Work</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">Our Work</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">See the Transformation</h2>
             <p className="text-dark-400 mt-4 max-w-lg mx-auto">Drag the slider to reveal the difference our work makes. Real bikes, real results.</p>
           </motion.div>
@@ -263,21 +294,21 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── HOW IT WORKS ─── */}
-      <AnimatedSection id="how-it-works" className="py-24 px-6">
+      <AnimatedSection id="how-it-works" className="py-24 px-6 bg-dark-900/40">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">Simple Process</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">Simple Process</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">How It Works</h2>
             <p className="text-dark-400 mt-4 max-w-lg mx-auto">Five straightforward steps from booking to a showroom-fresh ride.</p>
           </motion.div>
           <div className="relative">
-            <div className="hidden lg:block absolute top-12 left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-primary-500/30 to-transparent" />
+            <div className="hidden lg:block absolute top-12 left-[10%] right-[10%] h-0.5 bg-gradient-to-r from-transparent via-amber-500/30 to-transparent" />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
               {steps.map((step, i) => (
                 <motion.div key={step.num} variants={fadeUp} custom={i} className="relative text-center group">
-                  <div className="w-24 h-24 rounded-2xl bg-surface border border-border group-hover:border-primary-500/40 transition-colors mx-auto mb-5 flex items-center justify-center relative z-10">
-                    <step.icon className="w-8 h-8 text-primary-400" />
-                    <span className="absolute -top-2 -right-2 w-7 h-7 rounded-lg bg-primary-500 text-black text-xs font-black flex items-center justify-center">
+                  <div className="w-24 h-24 rounded-2xl bg-surface border border-border group-hover:border-amber-500/40 transition-colors mx-auto mb-5 flex items-center justify-center relative z-10">
+                    <step.icon className="w-8 h-8 text-amber-400" />
+                    <span className="absolute -top-2 -right-2 w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 text-black text-xs font-black flex items-center justify-center">
                       {step.num}
                     </span>
                   </div>
@@ -291,10 +322,10 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── PACKAGES ─── */}
-      <AnimatedSection id="packages" className="py-24 px-6 bg-dark-900/50">
+      <AnimatedSection id="packages" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">Transparent Pricing</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">Transparent Pricing</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">Choose Your Package</h2>
             <p className="text-dark-400 mt-4 max-w-lg mx-auto">No hidden costs. Every package includes premium products and a satisfaction guarantee.</p>
           </motion.div>
@@ -306,12 +337,12 @@ export default function Landing() {
                 custom={i}
                 className={`relative rounded-3xl border p-10 ${
                   pkg.popular
-                    ? 'border-primary-500/50 bg-gradient-to-b from-primary-500/10 to-surface/80 shadow-lg shadow-primary-500/10'
+                    ? 'border-amber-500/50 bg-gradient-to-b from-amber-500/10 to-surface/80 shadow-lg shadow-amber-500/10'
                     : 'border-border bg-surface/50'
                 } backdrop-blur-sm`}
               >
                 {pkg.popular && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-primary-500 to-red-500 text-black text-[11px] font-bold uppercase tracking-wider">
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-black text-[11px] font-bold uppercase tracking-wider">
                     Most Popular
                   </div>
                 )}
@@ -328,7 +359,7 @@ export default function Landing() {
                 <ul className="space-y-3 mb-8">
                   {pkg.features.map(f => (
                     <li key={f} className="flex items-start gap-2.5 text-sm text-dark-300">
-                      <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${pkg.popular ? 'text-primary-400' : 'text-dark-500'}`} />
+                      <CheckCircle2 className={`w-4 h-4 mt-0.5 flex-shrink-0 ${pkg.popular ? 'text-amber-400' : 'text-dark-500'}`} />
                       {f}
                     </li>
                   ))}
@@ -348,10 +379,10 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── WHY CHOOSE US ─── */}
-      <AnimatedSection id="why-us" className="py-24 px-6">
+      <AnimatedSection id="why-us" className="py-24 px-6 bg-dark-900/40">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">The Moto Custom Edge</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">The Moto Custom Edge</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">Why Riders Choose Us</h2>
           </motion.div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-10">
@@ -360,10 +391,10 @@ export default function Landing() {
                 key={item.title}
                 variants={fadeUp}
                 custom={i}
-                className="flex items-start gap-5 p-8 rounded-3xl border border-border bg-surface/30 hover:border-primary-500/20 transition-colors"
+                className="flex items-start gap-5 p-8 rounded-3xl border border-border bg-surface/30 hover:border-amber-500/20 transition-colors"
               >
-                <div className="w-11 h-11 rounded-xl bg-primary-500/10 flex items-center justify-center flex-shrink-0">
-                  <item.icon className="w-5 h-5 text-primary-400" />
+                <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                  <item.icon className="w-5 h-5 text-amber-400" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white mb-1">{item.title}</h3>
@@ -376,10 +407,10 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── REVIEWS ─── */}
-      <AnimatedSection id="reviews" className="py-24 px-6 bg-dark-900/50">
+      <AnimatedSection id="reviews" className="py-24 px-6">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">Testimonials</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">Testimonials</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">What Riders Say</h2>
             <p className="text-dark-400 mt-4 max-w-lg mx-auto">Real reviews from real customers. No fakes, no fluff.</p>
           </motion.div>
@@ -398,7 +429,7 @@ export default function Landing() {
                 </div>
                 <p className="text-sm text-dark-300 leading-relaxed mb-5 italic">"{r.text}"</p>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-500/20 to-red-500/20 flex items-center justify-center text-xs font-bold text-white">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500/20 to-red-500/20 flex items-center justify-center text-xs font-bold text-white">
                     {r.avatar}
                   </div>
                   <div>
@@ -413,10 +444,10 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── GALLERY ─── */}
-      <AnimatedSection id="gallery" className="py-24 px-6">
+      <AnimatedSection id="gallery" className="py-24 px-6 bg-dark-900/40">
         <div className="max-w-7xl mx-auto">
           <motion.div variants={fadeUp} className="text-center mb-16">
-            <p className="text-xs font-semibold text-primary-400 uppercase tracking-widest mb-3">Our Portfolio</p>
+            <p className="text-xs font-semibold text-amber-400 uppercase tracking-widest mb-3">Our Portfolio</p>
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight">Completed Projects</h2>
             <p className="text-dark-400 mt-4 max-w-lg mx-auto">A glimpse of recent bikes we've transformed at our studio.</p>
           </motion.div>
@@ -447,24 +478,25 @@ export default function Landing() {
       </AnimatedSection>
 
       {/* ─── CTA ─── */}
-      <section className="py-24 px-6">
+      <section id="booking" className="py-24 px-6">
         <div className="max-w-4xl mx-auto">
           <motion.div
             variants={fadeUp}
             initial="hidden"
             whileInView="visible"
             viewport={{ once: true }}
-            className="relative rounded-3xl p-12 sm:p-16 text-center overflow-hidden border border-primary-500/20"
+            className="relative rounded-3xl p-12 sm:p-16 text-center overflow-hidden border border-amber-500/20"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-primary-500/10 via-dark-900 to-red-500/10" />
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-[80px]" />
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-dark-900 to-red-500/10" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-[80px]" />
             <div className="absolute bottom-0 left-0 w-48 h-48 bg-red-500/10 rounded-full blur-[60px]" />
             <div className="relative z-10">
               <h2 className="text-3xl sm:text-5xl font-black tracking-tight mb-4">
                 Ready to Transform Your Ride?
               </h2>
               <p className="text-dark-300 max-w-xl mx-auto mb-8 leading-relaxed">
-                Book a free consultation. We'll assess your bike, recommend the right services, and give you a transparent quote — no obligation.
+                Book a free consultation. We'll assess your bike, recommend the right services,
+                and give you a transparent quote — no obligation.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button size="xl" onClick={() => navigate('/register')}>
@@ -485,7 +517,7 @@ export default function Landing() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-red-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-red-500 flex items-center justify-center">
                   <span className="text-black font-black text-sm">MC</span>
                 </div>
                 <div>
@@ -515,21 +547,21 @@ export default function Landing() {
               <h4 className="text-sm font-bold text-white mb-4">Contact</h4>
               <div className="space-y-3">
                 <div className="flex items-start gap-3">
-                  <MapPin className="w-4 h-4 text-primary-400 mt-0.5 flex-shrink-0" />
+                  <MapPin className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
                   <p className="text-sm text-dark-400">Koramangala, 5th Block,<br />Bangalore — 560095</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-primary-400 flex-shrink-0" />
+                  <Phone className="w-4 h-4 text-amber-400 flex-shrink-0" />
                   <a href="tel:+919800000000" className="text-sm text-dark-400 hover:text-white transition-colors">+91 98000 00000</a>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Send className="w-4 h-4 text-primary-400 flex-shrink-0" />
+                  <Send className="w-4 h-4 text-amber-400 flex-shrink-0" />
                   <a href="mailto:hello@motocustom.in" className="text-sm text-dark-400 hover:text-white transition-colors">hello@motocustom.in</a>
                 </div>
               </div>
               <div className="flex items-center gap-3 mt-5">
                 {[Camera, PlayCircle].map((Icon, i) => (
-                  <a key={i} href="#" className="w-9 h-9 rounded-xl bg-surface border border-border hover:border-primary-500/40 flex items-center justify-center transition-colors">
+                  <a key={i} href="#" className="w-9 h-9 rounded-xl bg-surface border border-border hover:border-amber-500/40 flex items-center justify-center transition-colors">
                     <Icon className="w-4 h-4 text-dark-400" />
                   </a>
                 ))}

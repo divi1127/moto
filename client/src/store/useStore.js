@@ -230,6 +230,7 @@ const useStore = create((set, get) => ({
   getUserById: (id) => get().users.find(u => u.id === id),
   getBikeById: (id) => get().bikes.find(b => b.id === id),
   getBookingById: (id) => get().bookings.find(b => b.id === id),
+  getCustomizationByBooking: (bookingId) => get().customizations.find(c => c.bookingId === bookingId),
 }));
 
 export default useStore;

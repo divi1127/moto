@@ -24,13 +24,15 @@ const CUSTOM_META = {
 const CUSTOM_SERVICE_RE = /paint|decal|sticker|graphic|wrap|led|mirror|grip|crash|seat|holder|tattoo/i;
 
 export default function AdminCustomization() {
-  const { bookings, users, bikes, serviceCategories, updateBooking, updateJobCard, jobCards } = useStore();
+  const { bookings, users, bikes, serviceCategories, updateBooking, updateJobCard, jobCards, customizations } = useStore();
   const loading = usePageLoading();
   const [filter, setFilter] = useState('all');
   const [selected, setSelected] = useState(null);
   const [assignTarget, setAssignTarget] = useState(null);
   const [assignStaff, setAssignStaff] = useState('');
   const [assignments, setAssignments] = useState({});
+
+  const designByBooking = useMemo(() => new Map(customizations.map(c => [c.bookingId, c])), [customizations]);
 
   const staff = useMemo(() => users.filter(u => u.role === 'staff' && u.status === 'active'), [users]);
   const accessoryNames = useMemo(() => {
@@ -42,7 +44,13 @@ export default function AdminCustomization() {
     return bookings
       .filter(b => (b.services || []).some(s => CUSTOM_SERVICE_RE.test(s)))
       .map(b => {
-        const meta = CUSTOM_META[b.id] || { paintColor: 'Jet Black', finish: 'Gloss', sticker: 'Custom Design', accessories: [] };
+        const design = designByBooking.get(b.id);
+        const meta = CUSTOM_META[b.id] || (design ? {
+          paintColor: design.parts?.length ? `${design.parts.length} part${design.parts.length === 1 ? '' : 's'}` : null,
+          finish: design.finishType || 'Gloss',
+          sticker: design.stickers?.length ? `${design.stickers.length} sticker${design.stickers.length === 1 ? '' : 's'}` : null,
+          accessories: [],
+        } : { paintColor: 'Jet Black', finish: 'Gloss', sticker: 'Custom Design', accessories: [] });
         const accessories = (b.services || []).filter(s => accessoryNames.includes(s));
         const requestStatus =
           b.status === 'cancelled' ? 'rejected'
@@ -50,10 +58,16 @@ export default function AdminCustomization() {
           : ['painting', 'detailing', 'ceramic', 'in-progress', 'quality-check', 'ready'].includes(b.status) ? 'in-progress'
           : b.status === 'approved' ? 'approved'
           : 'pending';
-        return { ...b, meta, accessories: meta.accessories?.length ? meta.accessories : accessories, requestStatus };
+        return {
+          ...b,
+          meta,
+          accessories: meta.accessories?.length ? meta.accessories : accessories,
+          requestStatus,
+          design: designByBooking.get(b.id) || null,
+        };
       })
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }, [bookings, accessoryNames]);
+  }, [bookings, accessoryNames, designByBooking]);
 
   const counts = useMemo(() => ({
     all: requests.length,
@@ -135,6 +149,22 @@ export default function AdminCustomization() {
                     </div>
                     <StatusBadge status={req.requestStatus === 'rejected' ? 'cancelled' : req.requestStatus} />
                   </div>
+
+                  {req.design?.previewImage && (
+                    <button
+                      onClick={() => setSelected(req)}
+                      className="mt-4 w-full rounded-xl border border-border overflow-hidden group/preview cursor-pointer"
+                    >
+                      <img
+                        src={req.design.previewImage}
+                        alt={`${req.bookingNumber} customization preview`}
+                        className="w-full h-40 object-cover transition-transform duration-300 group-hover/preview:scale-105"
+                      />
+                      <span className="block text-center text-[10px] uppercase tracking-wider py-1.5 bg-surface-lighter text-primary-400 border-t border-border">
+                        Customer design preview
+                      </span>
+                    </button>
+                  )}
 
                   <div className="mt-4 grid grid-cols-3 gap-3">
                     <div className="p-3 rounded-xl bg-surface-light border border-border">
@@ -228,6 +258,33 @@ export default function AdminCustomization() {
                 <p className="text-xs text-dark-500 mt-1">Advance paid: {formatCurrency(selected.advance || 0)}</p>
               </div>
             </div>
+
+            {selected.design?.previewImage && (
+              <div>
+                <p className="text-xs uppercase tracking-wider text-dark-500 font-medium mb-2">Customer Design Preview</p>
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <img src={selected.design.previewImage} alt="Customization preview" className="w-full" />
+                </div>
+                {(selected.design.parts?.length > 0 || selected.design.stickers?.length > 0) && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {selected.design.parts?.map((p, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg bg-surface-lighter text-dark-300 border border-border">
+                        <span className="w-2.5 h-2.5 rounded-full border border-white/20" style={{ backgroundColor: p.color }} />
+                        {p.partType}
+                      </span>
+                    ))}
+                    {selected.design.stickers?.map((s, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-lg bg-primary-500/10 text-primary-400 border border-primary-500/20">
+                        <Palette className="w-3 h-3" /> {s.key}
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {selected.design.finishType && (
+                  <p className="mt-2 text-xs text-dark-400">Finish: <span className="text-dark-200 font-medium">{selected.design.finishType}</span></p>
+                )}
+              </div>
+            )}
 
             <div>
               <p className="text-xs uppercase tracking-wider text-dark-500 font-medium mb-2">Requested Accessories</p>
